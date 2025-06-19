@@ -21,6 +21,7 @@ export default function Home() {
   const [checked, setChecked] = useState<Record<string, boolean>>({})
 
   const loadPairings = async () => {
+    console.log("loadParings got ",{eventCode, round})
     if (!eventCode || !round) {
       alert('Please enter both event code and round')
       return
@@ -65,14 +66,14 @@ export default function Home() {
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Event code (e.g. tvushbs)"
+          placeholder="Event code (in link)"
           value={eventCode}
           onChange={e => setEventCode(e.target.value)}
           className="w-full p-2 border rounded mb-2"
         />
         <input
           type="number"
-          placeholder="Round (e.g. 5)"
+          placeholder="Round (number)"
           value={round}
           onChange={e => setRound(e.target.value)}
           className="w-full p-2 border rounded"
