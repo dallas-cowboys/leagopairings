@@ -15,15 +15,15 @@ export default async function handler(
   }
 
   try {
-    // 1. Launch headless Chromium
+    // Launch headless Chromium
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
-    // 2. Navigate and wait for table rows
+    // Navigate and wait for table rows
     await page.goto(url, { timeout: 15000 })
     await page.waitForSelector(selector)
 
-    // 3. Query all rows
+    // Scrape each row
     const rows = await page.$$(selector)
     const pairings: Array<{ board_num: string; black: string; white: string; result: string }> = []
 
@@ -39,7 +39,7 @@ export default async function handler(
 
     await browser.close()
 
-    // 4. Filter by players if provided
+    // Filter by players if provided
     const names = playersParam
       .split(',')
       .map(n => n.trim().toLowerCase())
@@ -47,11 +47,13 @@ export default async function handler(
 
     const filtered = names.length
       ? pairings.filter(
-          p => names.includes(p.black.toLowerCase()) || names.includes(p.white.toLowerCase())
+          p =>
+            names.includes(p.black.toLowerCase()) ||
+            names.includes(p.white.toLowerCase())
         )
       : pairings
 
-    // 5. Send response
+    // Send JSON response
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate')
     return res.status(200).json({ pairings: filtered })
   } catch (error: unknown) {
