@@ -1,103 +1,141 @@
-import Image from "next/image";
+// app/page.tsx
+
+'use client'
+
+import { useState } from 'react'
+
+// Define the shape of a pairing
+interface Pairing {
+  board_num: string
+  black: string
+  white: string
+  result: string
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [eventCode, setEventCode] = useState('')
+  const [round, setRound] = useState('')
+  const [allPairings, setAllPairings] = useState<Pairing[]>([])
+  const [players, setPlayers] = useState<string[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const loadPairings = async () => {
+    if (!eventCode || !round) {
+      alert('Please enter both event code and round')
+      return
+    }
+
+    const leagoUrl =
+      `https://leago.gg/event/${encodeURIComponent(eventCode)}` +
+      `/matches/r/${encodeURIComponent(round)}`
+
+    const res = await fetch(
+      `/api/pairings?url=${encodeURIComponent(leagoUrl)}`
+    )
+    const data = (await res.json()) as { pairings: Pairing[] }
+    setAllPairings(data.pairings)
+
+    // Extract unique player names from pairings
+    const names = Array.from(
+      new Set(data.pairings.flatMap(p => [p.black, p.white]))
+    ).sort()
+    setPlayers(names)
+
+    // Initialize checkbox state
+    const initChecked: Record<string, boolean> = {}
+    names.forEach(name => {
+      initChecked[name] = false
+    })
+    setChecked(initChecked)
+  }
+
+  const toggle = (name: string) => {
+    setChecked(prev => ({ ...prev, [name]: !prev[name] }))
+  }
+
+  const filtered = allPairings.filter(
+    p => checked[p.black] || checked[p.white]
+  )
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-4">Go Pairing Viewer</h1>
+
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Event code (e.g. tvushbs)"
+          value={eventCode}
+          onChange={e => setEventCode(e.target.value)}
+          className="w-full p-2 border rounded mb-2"
+        />
+        <input
+          type="number"
+          placeholder="Round (e.g. 5)"
+          value={round}
+          onChange={e => setRound(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+
+      <button
+        onClick={loadPairings}
+        className="px-4 py-2 bg-blue-600 text-white rounded mb-6"
+      >
+        Load Pairings
+      </button>
+
+      {players.length > 0 && (
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search players…"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full p-2 border rounded mb-2"
+          />
+          <div className="border rounded h-40 overflow-y-auto p-2 grid grid-cols-2 gap-2">
+            {players
+              .filter(name =>
+                name.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map(name => (
+                <label key={name} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={checked[name]}
+                    onChange={() => toggle(name)}
+                  />
+                  <span>{name}</span>
+                </label>
+              ))}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {players.length > 0 && (
+        <table className="w-full table-auto border-collapse">
+          <thead>
+            <tr>
+              <th className="border px-2 py-1">Board</th>
+              <th className="border px-2 py-1">Black</th>
+              <th className="border px-2 py-1">White</th>
+              <th className="border px-2 py-1">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(Object.values(checked).some(v => v) ? filtered : allPairings).map((p, i) => (
+              <tr key={i}>
+                <td className="border px-2 py-1">{p.board_num}</td>
+                <td className="border px-2 py-1">{p.black}</td>
+                <td className="border px-2 py-1">{p.white}</td>
+                <td className="border px-2 py-1">{p.result}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
-  );
+  )
 }
