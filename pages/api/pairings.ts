@@ -1,3 +1,5 @@
+export const config = { api: { externalResolver: true } }
+
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { chromium } from 'playwright'
 
@@ -15,12 +17,16 @@ export default async function handler(
   }
 
   try {
+    console.log('pairing API module loaded')
     // Launch headless Chromium
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
     // Navigate and wait for table rows
-    await page.goto(url, { timeout: 15000 })
+    const response = await page.goto(url, { timeout: 15000, waitUntil: 'domcontentloaded' })
+    if (!response || !response.ok()) {
+      throw new Error(`Failed to load page: ${response?.status()}`)
+    }
     await page.waitForSelector(selector)
 
     // Scrape each row
@@ -54,10 +60,12 @@ export default async function handler(
       : pairings
 
     // Send JSON response
+    res.setHeader('Content-Type', 'application/json')
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate')
     return res.status(200).json({ pairings: filtered })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
+    console.error('pairing API error:', message)
     return res.status(500).json({ error: message })
   }
 }
