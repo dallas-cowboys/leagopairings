@@ -19,9 +19,6 @@ export default async function handler(
   res: NextApiResponse<{ pairings: Pairing[] } | { error: string }>
 ) {
   const url = Array.isArray(req.query.url) ? req.query.url[0] : req.query.url
-  const playersParam = Array.isArray(req.query.players)
-    ? req.query.players[0]
-    : req.query.players ?? ''
 
   if (!url) {
     return res.status(400).json({ error: 'URL not given!' })
@@ -29,7 +26,10 @@ export default async function handler(
 
   try {
     // 1. Launch headless Chromium
-    const browser = await chromium.launch()
+    // const browser = await chromium.launch()
+    const browser = await chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     const page    = await browser.newPage()
 
     // 2. Navigate and wait for the table to render
@@ -55,6 +55,11 @@ export default async function handler(
     )
 
     await browser.close()
+
+
+    const playersParam = Array.isArray(req.query.players)
+    ? req.query.players[0]
+    : req.query.players ?? ''
 
     // 4. Filter by players if given
     const names = playersParam
